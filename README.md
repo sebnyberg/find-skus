@@ -1,4 +1,4 @@
-# find-skus
+# findskus
 
 CLI tool for finding Azure SKUs and regions meeting certain criteria.
 
