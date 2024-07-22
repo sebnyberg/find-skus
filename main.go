@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -20,15 +21,12 @@ import (
 	"github.com/gosuri/uitable"
 )
 
-const (
-	doTruncate = false
-)
-
 var (
 	regionType                    = flag.String("region-type", "Physical", "Filter by region type, allowed values: [Physical, Logical, All], default: Physical")
 	regionCategory                = flag.String("region-category", RegionCategoryUndefined, "If set, filter by region category, allowed values: [Recommended, Other]")
 	downloadParallelism           = flag.Uint64("download-parallelism", 12, "Number of parallel downloads")
 	tempDir                       = flag.String("temp-dir", "", "Directory to download skus")
+	memory                        = flag.Uint64("memory", 0, "Memory in GB")
 	minMemory                     = flag.Uint64("min-memory", 0, "Minimum memory in GB")
 	maxMemory                     = flag.Uint64("max-memory", 0, "Maximum memory in GB")
 	minCPU                        = flag.Uint64("min-cpu", 0, "Minimum vCPUs")
@@ -50,6 +48,7 @@ var (
 	familyRegexpStr               = flag.String("family", ".*", "Family regexp, default: .*")
 	minZones                      = flag.Uint64("min-zones", 0, "Minimum SKU AZs")
 	locationsKeepList             = flag.String("l", "", "Comma separated list (no spaces) of locations to keep, e.g. 'eastus,westus'")
+	redownload                    = flag.Bool("redownload", false, "Whether to re-download data")
 )
 
 const (
@@ -370,7 +369,7 @@ func getSkus(locations []JsonLocation, parallelism uint64, downloadDir string) (
 		go func(location string) {
 			defer wg.Done()
 			defer func() { <-batchch }()
-			res, err := getSkusForLocation(location, downloadDir, doTruncate)
+			res, err := getSkusForLocation(location, downloadDir, *redownload)
 			if err != nil {
 				errOnce.Do(func() {
 					firstError = fmt.Errorf("download for %v failed, %w", location, err)
@@ -386,7 +385,7 @@ func getSkus(locations []JsonLocation, parallelism uint64, downloadDir string) (
 	return m, firstError
 }
 
-func getLocations(downloadDir string) ([]JsonLocation, error) {
+func getLocations(downloadDir string, doTruncate bool) ([]JsonLocation, error) {
 	downloadPath := path.Join(downloadDir, "locations.json")
 	var locations []JsonLocation
 	cmd := exec.Command("az", "account", "list-locations", "-o", "json")
@@ -459,14 +458,22 @@ type JsonAvailabilityZoneMapping struct {
 
 func validateFlags() error {
 	// Memory
-	if *maxMemory < *minMemory || *maxMemory == 0 {
-		*maxMemory = math.MaxUint64
-	}
-	if *minMemory > *maxMemory {
-		return fmt.Errorf(
-			"minMemory (%v) must be smaller or equal to maxMemory (%v)",
-			*minMemory, *maxMemory,
-		)
+	if *memory != 0 {
+		if *minMemory != 0 || *maxMemory != 0 {
+			return errors.New("please specify either memory or minMemory and maxMemory, not both")
+		}
+		*minMemory = *memory
+		*maxMemory = *memory
+	} else {
+		if *maxMemory < *minMemory || *maxMemory == 0 {
+			*maxMemory = math.MaxUint64
+		}
+		if *minMemory > *maxMemory {
+			return fmt.Errorf(
+				"minMemory (%v) must be smaller or equal to maxMemory (%v)",
+				*minMemory, *maxMemory,
+			)
+		}
 	}
 
 	// CPU
@@ -603,7 +610,7 @@ func run() error {
 	}
 
 	// List and filter locatioons
-	locations, err := getLocations(*tempDir)
+	locations, err := getLocations(*tempDir, *redownload)
 	if err != nil {
 		slog.Error("Failed to get locations", slog.String("err", err.Error()))
 		log.Fatalln(err)
