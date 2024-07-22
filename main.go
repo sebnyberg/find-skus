@@ -27,10 +27,11 @@ var (
 	downloadParallelism           = flag.Uint64("download-parallelism", 12, "Number of parallel downloads")
 	tempDir                       = flag.String("temp-dir", "", "Directory to download skus")
 	memory                        = flag.Uint64("memory", 0, "Memory in GB")
-	minMemory                     = flag.Uint64("min-memory", 0, "Minimum memory in GB")
-	maxMemory                     = flag.Uint64("max-memory", 0, "Maximum memory in GB")
-	minCPU                        = flag.Uint64("min-cpu", 0, "Minimum vCPUs")
-	maxCPU                        = flag.Uint64("max-cpu", 0, "Maximum vCPUs")
+	memoryMin                     = flag.Uint64("memory-min", 0, "Minimum memory in GB")
+	memoryMax                     = flag.Uint64("memory-max", 0, "Maximum memory in GB")
+	cpu                           = flag.Uint64("cpu", 0, "vCPUs")
+	cpuMin                        = flag.Uint64("cpu-min", 0, "Minimum vCPUs")
+	cpuMax                        = flag.Uint64("cpu-max", 0, "Maximum vCPUs")
 	locationSummary               = flag.Bool("by-location", false, "Whether to summarize by location")
 	vCPUsPerCore                  = flag.Uint64("vcpus-per-core", 0, "Require exact vCPUs per core")
 	mustHaveAZ                    = flag.Bool("must-have-az", false, "Whether availability zones are required")
@@ -71,10 +72,10 @@ func validateRegexp(s string) error {
 }
 
 type skuFilter struct {
-	minMemory             uint64
-	maxMemory             uint64
-	minCPU                uint64
-	maxCPU                uint64
+	memoryMin             uint64
+	memoryMax             uint64
+	cpuMin                uint64
+	cpuMax                uint64
 	premiumIO             bool
 	ephemeralDisk         bool
 	vCPUsPerCore          uint64
@@ -98,10 +99,10 @@ func (f skuFilter) Match(sku JsonSku) (bool, error) {
 	if !f.sizeRegexp.MatchString(sku.Size) {
 		return false, nil
 	}
-	if sku.Memory() < f.minMemory || sku.Memory() > f.maxMemory {
+	if sku.Memory() < f.memoryMin || sku.Memory() > f.memoryMax {
 		return false, nil
 	}
-	if sku.VCPUs() < f.minCPU || sku.VCPUs() > f.maxCPU {
+	if sku.VCPUs() < f.cpuMin || sku.VCPUs() > f.cpuMax {
 		return false, nil
 	}
 	if f.vCPUsPerCore > 0 && sku.VCPUsPerCore() != f.vCPUsPerCore {
@@ -456,32 +457,40 @@ type JsonAvailabilityZoneMapping struct {
 func validateFlags() error {
 	// Memory
 	if *memory != 0 {
-		if *minMemory != 0 || *maxMemory != 0 {
+		if *memoryMin != 0 || *memoryMax != 0 {
 			return errors.New("please specify either memory or minMemory and maxMemory, not both")
 		}
-		*minMemory = *memory
-		*maxMemory = *memory
+		*memoryMin = *memory
+		*memoryMax = *memory
 	} else {
-		if *maxMemory < *minMemory || *maxMemory == 0 {
-			*maxMemory = math.MaxUint64
+		if *memoryMax < *memoryMin || *memoryMax == 0 {
+			*memoryMax = math.MaxUint64
 		}
-		if *minMemory > *maxMemory {
+		if *memoryMin > *memoryMax {
 			return fmt.Errorf(
 				"minMemory (%v) must be smaller or equal to maxMemory (%v)",
-				*minMemory, *maxMemory,
+				*memoryMin, *memoryMax,
 			)
 		}
 	}
 
 	// CPU
-	if *maxCPU < *minCPU || *maxCPU == 0 {
-		*maxCPU = math.MaxUint64
-	}
-	if *minCPU > *maxCPU {
-		return fmt.Errorf(
-			"minCPU (%v) must be smaller or equal to maxCPU (%v)",
-			*minCPU, *maxCPU,
-		)
+	if *cpu != 0 {
+		if *cpuMin != 0 || *cpuMax != 0 {
+			return errors.New("please specify either cpu or minCPU and maxCPU, not both")
+		}
+		*cpuMin = *cpu
+		*cpuMax = *cpu
+	} else {
+		if *cpuMax < *cpuMin || *cpuMax == 0 {
+			*cpuMax = math.MaxUint64
+		}
+		if *cpuMin > *cpuMax {
+			return fmt.Errorf(
+				"minCPU (%v) must be smaller or equal to maxCPU (%v)",
+				*cpuMin, *cpuMax,
+			)
+		}
 	}
 
 	// Output
@@ -641,10 +650,10 @@ func run() error {
 		return fmt.Errorf("failed to compile sku family-regex, %w", err)
 	}
 	sFilter := skuFilter{
-		minMemory:             *minMemory,
-		maxMemory:             *maxMemory,
-		minCPU:                *minCPU,
-		maxCPU:                *maxCPU,
+		memoryMin:             *memoryMin,
+		memoryMax:             *memoryMax,
+		cpuMin:                *cpuMin,
+		cpuMax:                *cpuMax,
 		vCPUsPerCore:          *vCPUsPerCore,
 		premiumIO:             *mustHavePremiumIO,
 		ephemeralDisk:         *mustHaveEphemeralDisk,
