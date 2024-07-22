@@ -721,7 +721,7 @@ func run() error {
 		for _, r := range results {
 			r.WriteTo(table)
 		}
-		fmt.Print(table)
+		fmt.Println(table)
 	default:
 		panic(*output)
 	}
