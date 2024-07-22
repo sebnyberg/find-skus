@@ -44,7 +44,7 @@ var (
 	verbose                       = flag.Bool("v", false, "Whether to log verbose output")
 	quiet                         = flag.Bool("q", false, "Whether to quiet all logs")
 	output                        = flag.String("o", "table", "Output type [table, json], default: json")
-	sortBy                        = flag.String("sort-by", "name", "Sort by [name, skuCount], default: name")
+	sortBy                        = flag.String("sort-by", "name", "Sort by [name], default: name")
 	sizeRegexpStr                 = flag.String("size", ".*", "Size regexp, default: .*")
 	familyRegexpStr               = flag.String("family", ".*", "Family regexp, default: .*")
 	zonesMin                      = flag.Uint64("zones-min", 0, "Minimum SKU AZs")
@@ -84,7 +84,7 @@ type skuFilter struct {
 	encryptionAtHost      bool
 	acceleratedNetworking bool
 	resourceType          string
-	zonesMin              uint64
+	minZones              uint64
 	maxZoneDegredation    uint64
 	mustBeAvailable       bool
 }
@@ -123,8 +123,8 @@ func (f skuFilter) Match(sku JsonSku) (bool, error) {
 	if f.resourceType != "" && sku.ResourceType != f.resourceType {
 		return false, nil
 	}
-	if f.zonesMin > 0 && len(sku.LocationInfo) > 0 {
-		if len(sku.LocationInfo[0].Zones) < int(f.zonesMin) {
+	if f.minZones > 0 && len(sku.LocationInfo) > 0 {
+		if len(sku.LocationInfo[0].Zones) < int(f.minZones) {
 			return false, nil
 		}
 	}
@@ -663,7 +663,7 @@ func run() error {
 		resourceType:          resourceTypeVirtualMachines,
 		sizeRegexp:            sizeRegexp,
 		familyRegexp:          familyRegexp,
-		zonesMin:              *zonesMin,
+		minZones:              *zonesMin,
 		maxZoneDegredation:    *maxZoneDegredation,
 	}
 	type tableable interface {
