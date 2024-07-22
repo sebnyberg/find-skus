@@ -2,6 +2,19 @@
 
 CLI tool for finding Azure SKUs and regions meeting certain criteria.
 
+## Motivation
+
+The two commands available in the Azure CLI do not have enough functionality to
+analyze which regions are suffering from degragations or lack of support for
+various features.
+
+Additionally, `az vm list-skus` takes between 15 seconds to 2 minutes to execute
+per region. The only way to analyze its outputs without going insane is to put
+store the output in a JSON and do analysis.
+
+The goal of this tool is to be able to quickly find the most healthy,
+well-suited region based on SKU criteria for the workload that you want to run.
+
 ## Security consideration
 
 This tool uses `az vm list-skus` and `az account locations`.
