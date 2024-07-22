@@ -88,54 +88,51 @@ type skuFilter struct {
 	mustBeAvailable       bool
 }
 
-func (f skuFilter) Match(sku JsonSku) bool {
+func (f skuFilter) Match(sku JsonSku) (bool, error) {
 	if sku.ResourceType != f.resourceType {
-		return false
+		return false, nil
 	}
 	if !f.familyRegexp.MatchString(sku.Family) {
-		return false
+		return false, nil
 	}
 	if !f.sizeRegexp.MatchString(sku.Size) {
-		return false
+		return false, nil
 	}
 	if sku.Memory() < f.minMemory || sku.Memory() > f.maxMemory {
-		return false
+		return false, nil
 	}
 	if sku.VCPUs() < f.minCPU || sku.VCPUs() > f.maxCPU {
-		return false
+		return false, nil
 	}
 	if f.vCPUsPerCore > 0 && sku.VCPUsPerCore() != f.vCPUsPerCore {
-		return false
+		return false, nil
 	}
 	if f.encryptionAtHost && sku.GetCapability("EncryptionAtHostSupported") != "True" {
-		return false
+		return false, nil
 	}
 	if f.ephemeralDisk && sku.GetCapability("EphemeralOSDiskSupported") != "True" {
-		return false
+		return false, nil
 	}
 	if f.premiumIO && sku.GetCapability("PremiumIO") != "True" {
-		return false
+		return false, nil
 	}
 	if f.acceleratedNetworking && sku.GetCapability("AcceleratedNetworkingEnabled") != "True" {
-		return false
+		return false, nil
 	}
 	if f.resourceType != "" && sku.ResourceType != f.resourceType {
-		return false
+		return false, nil
 	}
-	if len(sku.LocationInfo) != 1 {
-		panic("locationInfo not implemented")
-	}
-	if f.minZones > 0 {
+	if f.minZones > 0 && len(sku.LocationInfo) > 0 {
 		if len(sku.LocationInfo[0].Zones) < int(f.minZones) {
-			return false
+			return false, nil
 		}
 	}
 	if f.mustBeAvailable {
 		if !sku.IsAvailable(f.maxZoneDegredation) {
-			return false
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
 type JsonSku struct {
@@ -526,7 +523,7 @@ func validateFlags() error {
 	return nil
 }
 
-func calculateResultByLocation(l JsonLocation, skus []JsonSku, filter skuFilter) ResultByLocation {
+func calculateResultByLocation(l JsonLocation, skus []JsonSku, filter skuFilter) (ResultByLocation, error) {
 	withUnavailable := filter
 	withUnavailable.mustBeAvailable = false
 	withUnavailable.maxZoneDegredation = 3 // make super-duper sure we don't filter
@@ -537,10 +534,18 @@ func calculateResultByLocation(l JsonLocation, skus []JsonSku, filter skuFilter)
 	var count int
 	var availableCount int
 	for _, s := range skus {
-		if withUnavailable.Match(s) {
+		didMatch, err := withUnavailable.Match(s)
+		if err != nil {
+			return ResultByLocation{}, err
+		}
+		if didMatch {
 			count++
 		}
-		if withoutUnavailable.Match(s) {
+		didMatch, err = withoutUnavailable.Match(s)
+		if err != nil {
+			return ResultByLocation{}, err
+		}
+		if didMatch {
 			availableCount++
 		}
 	}
@@ -551,25 +556,7 @@ func calculateResultByLocation(l JsonLocation, skus []JsonSku, filter skuFilter)
 		SKUCount:          uint64(count),
 		SKUCountAvailable: uint64(availableCount),
 	}
-	return res
-}
-
-func calculateResultBySKU(l JsonLocation, sku JsonSku, filter skuFilter) Result {
-	res := Result{
-		Location:              l.Name,
-		Name:                  sku.Name,
-		Size:                  sku.Size,
-		VCPUs:                 sku.VCPUs(),
-		VCPUsPerCore:          sku.VCPUsPerCore(),
-		MemoryGB:              sku.Memory(),
-		CpuArchitectureType:   sku.GetCapability("CpuArchitectureType"),
-		PremiumIO:             sku.GetCapability("PremiumIO") == "True",
-		EphemeralDisk:         sku.GetCapability("EphemeralOSDiskSupported") == "True",
-		EncryptionAtHost:      sku.GetCapability("EncryptionAtHostSupported") == "True",
-		AcceleratedNetworking: sku.GetCapability("AcceleratedNetworkingEnabled") == "True",
-		Available:             sku.IsAvailable(filter.maxZoneDegredation),
-	}
-	return res
+	return res, nil
 }
 
 func run() error {
@@ -628,7 +615,6 @@ func run() error {
 		if l == "" {
 			continue
 		}
-		fmt.Println(l)
 		locFilter.keepLocations[l] = struct{}{}
 	}
 	var n int
@@ -682,7 +668,13 @@ func run() error {
 		var headerWriter ResultByLocation
 		headerWriter.WriteHeader(table)
 		for _, l := range locations {
-			rl := calculateResultByLocation(l, skus[l.Name], sFilter)
+			rl, err := calculateResultByLocation(l, skus[l.Name], sFilter)
+			if err != nil {
+				slog.Error("failed to calculate result by location",
+					slog.Any("location", l),
+				)
+				return fmt.Errorf("failed to calculate result by location %v, %w", l, err)
+			}
 			results = append(results, rl)
 		}
 	} else { // Do not roll up by location
@@ -690,7 +682,14 @@ func run() error {
 		headerWriter.WriteHeader(table)
 		for _, l := range locations {
 			for _, sku := range skus[l.Name] {
-				if !sFilter.Match(sku) {
+				didMatch, err := sFilter.Match(sku)
+				if err != nil {
+					slog.Error("failed to match sku",
+						slog.Any("location", l),
+					)
+					return fmt.Errorf("failed to match sku for location %v, sku %v, %w", l.Name, sku.Name, err)
+				}
+				if !didMatch {
 					continue
 				}
 				x := Result{
@@ -722,6 +721,7 @@ func run() error {
 		for _, r := range results {
 			r.WriteTo(table)
 		}
+		fmt.Print(table)
 	default:
 		panic(*output)
 	}
