@@ -43,6 +43,18 @@ go install github.com/sebnyberg/findskus@latest
 > On the first run, locations will be (slowly) downloaded from azure to a
 > directory in `/tmp`. To view progress, run in verbose mode with `-v`.
 
+### First run
+
+The first run (and location) will cache results from Azure. View progress with
+`-v`.
+
+After changing the subscription, you should re-download data with:
+`--redownload`:
+
+```bash
+findskus --redownload [...]
+```
+
 ### Finding SKUs
 
 Find SKUs with 16GB RAM in West Europe:
@@ -61,7 +73,7 @@ Find all SKUs with accelerated networking in southcentralus or westus, output as
 JSON.
 
 ```bash
-findskus --accelerated-networking --min-memory 32 -l southcentralus,westus -o json
+findskus --accelerated-networking --memory-min 32 -l southcentralus,westus -o json
 ```
 
 ### Listing location statistics
@@ -69,7 +81,7 @@ findskus --accelerated-networking --min-memory 32 -l southcentralus,westus -o js
 To view location statistics, add `--by-location`:
 
 ```bash
-findskus --min-memory 16 --max-memory 16 --encryption-at-host --by-location
+findskus --memory-min 16 --memory-max 32 --encryption-at-host --by-location
 ```
 
 Find locations that has premium IO in at least two availability zones:
@@ -78,11 +90,3 @@ Find locations that has premium IO in at least two availability zones:
 findskus --premium-io --min-zones 2 --by-location
 ```
 
-### Re-downloading skus
-
-After changing the subscription, you should re-download Azure data with:
-`--redownload`:
-
-```bash
-findskus --redownload [...]
-```
