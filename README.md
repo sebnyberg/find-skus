@@ -48,20 +48,20 @@ go install github.com/sebnyberg/findskus@latest
 Find SKUs with 16GB RAM in West Europe:
 
 ```bash
-findskus --min-memory 16 --max-memory 16 --encryption-at-host -l westeurope
+findskus --memory 16 --encryption-at-host -l westeurope
 ```
 
 Find SKUs in any region with at least 64 vCPUs that are available for use:
 
 ```bash
-findskus --min-vcpu 64
+findskus --min-cpu 64
 ```
 
 Find all SKUs with accelerated networking in southcentralus or westus, output as
 JSON.
 
 ```bash
-findskus --accelerated-networking -l southcentralus,westus -o json
+findskus --accelerated-networking --min-memory 32 -l southcentralus,westus -o json
 ```
 
 ### Listing location statistics
