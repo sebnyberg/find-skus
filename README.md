@@ -87,6 +87,6 @@ findskus --memory-min 16 --memory-max 32 --encryption-at-host --by-location
 Find locations that has premium IO in at least two availability zones:
 
 ```bash
-findskus --premium-io --min-zones 2 --by-location
+findskus --premium-io --zones-min 2 --by-location
 ```
 
