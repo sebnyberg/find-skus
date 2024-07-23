@@ -1,6 +1,6 @@
 # findsku
 
-Azure CLI wrapper for filtering Azure SKUs and regions.
+CLI for filtering Azure SKUs and regions.
 
 ## Motivation
 
@@ -9,15 +9,14 @@ The two commands `az vm list-skus` and `az account locations` are very slow
 for analysis.
 
 The goal of this tool is to cache the results of the Azure CLI requests, then
-allow fast analysis to compare regions and find SKUs that match certain
-criteria.
+allow fast analysis to compare regions and find SKUs matching filtering criteria.
 
 ## Security consideration
 
 This tool uses `az vm list-skus` and `az account locations`.
 
 Obviously I trust this tool since I wrote it myself. But you should really not
-trust tools like these to run on your own infra.
+trust tools like these.
 
 > [!WARNING]
 > It is highly recommended that you create a SP with Reader access to the
@@ -27,7 +26,7 @@ trust tools like these to run on your own infra.
 
 - Access to `/tmp`
 - Azure CLI (`az` in the path)
-- Azure CLI logged in (`az login`)
+- Azure CLI login session (`az login`)
 
 ## Installation
 
