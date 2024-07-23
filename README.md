@@ -1,6 +1,6 @@
-# findskus
+# findsku
 
-CLI tool for finding Azure SKUs and regions meeting certain criteria.
+Azure CLI wrapper for filtering Azure SKUs and regions.
 
 ## Motivation
 
@@ -52,7 +52,7 @@ After changing the subscription, you should re-download data with:
 `--redownload`:
 
 ```bash
-findskus --redownload [...]
+findsku --redownload [...]
 ```
 
 ### Finding SKUs
@@ -60,20 +60,20 @@ findskus --redownload [...]
 Find SKUs with 16GB RAM in West Europe:
 
 ```bash
-findskus --memory 16 --encryption-at-host -l westeurope
+findsku --memory 16 --encryption-at-host -l westeurope
 ```
 
 Find SKUs in any region with at least 64 vCPUs that are available for use:
 
 ```bash
-findskus --min-cpu 64
+findsku --min-cpu 64
 ```
 
 Find all SKUs with accelerated networking in southcentralus or westus, output as
 JSON.
 
 ```bash
-findskus --accelerated-networking --min-memory 32 -l southcentralus,westus -o json
+findsku --accelerated-networking --min-memory 32 -l southcentralus,westus -o json
 ```
 
 ### Listing location statistics
@@ -81,12 +81,12 @@ findskus --accelerated-networking --min-memory 32 -l southcentralus,westus -o js
 To view location statistics, add `--by-location`:
 
 ```bash
-findskus --min-memory 16 --max-memory 32 --encryption-at-host --by-location
+findsku --min-memory 16 --max-memory 32 --encryption-at-host --by-location
 ```
 
 Find locations that has premium IO in at least two availability zones:
 
 ```bash
-findskus --premium-io --min-zones 2 --by-location
+findsku --premium-io --min-zones 2 --by-location
 ```
 
