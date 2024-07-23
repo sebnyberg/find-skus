@@ -73,7 +73,7 @@ Find all SKUs with accelerated networking in southcentralus or westus, output as
 JSON.
 
 ```bash
-findskus --accelerated-networking --memory-min 32 -l southcentralus,westus -o json
+findskus --accelerated-networking --min-memory 32 -l southcentralus,westus -o json
 ```
 
 ### Listing location statistics
@@ -81,12 +81,12 @@ findskus --accelerated-networking --memory-min 32 -l southcentralus,westus -o js
 To view location statistics, add `--by-location`:
 
 ```bash
-findskus --memory-min 16 --memory-max 32 --encryption-at-host --by-location
+findskus --min-memory 16 --max-memory 32 --encryption-at-host --by-location
 ```
 
 Find locations that has premium IO in at least two availability zones:
 
 ```bash
-findskus --premium-io --zones-min 2 --by-location
+findskus --premium-io --min-zones 2 --by-location
 ```
 
